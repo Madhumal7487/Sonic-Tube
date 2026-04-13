@@ -27,7 +27,7 @@ def progress_hook(d):
         total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
         size_mb = f"{total / (1024 * 1024):.2f} MB" if total > 0 else "Calculating..."
         
-        # අකුරු වල පාට කේත (ANSI) ඉවත් කර පිරිසිදු දත්ත ලබාගැනීම
+        # ANSI පාට කේත ඉවත් කර දත්ත පිරිසිදු කිරීම
         speed = d.get('_speed_str', '0 KB/s').strip()
         speed = re.sub(r'\x1b\[[0-9;]*m', '', speed)
         
@@ -41,23 +41,33 @@ def progress_hook(d):
 
 def start_dl(url):
     global download_data
+    # Render සහ YouTube අතර ඇති ගැටලු මගහැරීමට හොඳම සැකසුම්
     ydl_opts = {
-        'format': 'best',
+        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
         'progress_hooks': [progress_hook],
         'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
-        'cookiefile': 'cookies.txt',  # GitHub එකට දමන cookies.txt මෙහිදී සම්බන්ධ වේ
+        'cookiefile': 'cookies.txt',  # GitHub එකට දාන cookies.txt මෙතනට සම්බන්ධ වේ
         'noplaylist': True,
+        'merge_output_format': 'mp4',
+        'restrictfilenames': True, # ෆයිල් නමේ ඇති විශේෂ අකුරු ඉවත් කරයි
     }
+    
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            # ඩවුන්ලෝඩ් වුණු නියමිත ෆයිල් නම ලබා ගැනීම
+            actual_filename = ydl.prepare_filename(info)
+            filename_only = os.path.basename(actual_filename)
+            
             download_data["title"] = info.get('title', 'Video')
             download_data["thumb"] = info.get('thumbnail', '')
-            download_data["filename"] = f"{info.get('title')}.{info.get('ext')}"
+            download_data["filename"] = filename_only
+            
         download_data["status"] = "finished"
         download_data["percent"] = "100%"
+        
     except Exception as e:
-        print(f"Error logic: {str(e)}")
+        print(f"Error Log: {str(e)}")
         download_data["status"] = "error"
 
 @app.route('/')
@@ -83,12 +93,11 @@ def download():
 def progress():
     return jsonify(download_data)
 
-# සර්වර් එකේ සිට ඔබේ ඩිවයිස් එකට වීඩියෝ එක ලබාදීම
+# සර්වර් එකේ සිට වීඩියෝව ඔබේ පරිගණකයට ලබාදීම (Download Button)
 @app.route('/get-video/<path:filename>')
 def save_file(filename):
     return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
 
 if __name__ == '__main__':
-    # Render හි Port එක හඳුනාගැනීම
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
