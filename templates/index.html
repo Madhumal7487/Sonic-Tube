@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sonic Tube | Hashan Madhumal</title>
+    <style>
+        body { background: #0b0f1a; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; }
+        .card { background: #161b2c; padding: 40px; border-radius: 30px; max-width: 500px; margin: 40px auto; box-shadow: 0 0 30px rgba(56, 189, 248, 0.15); border: 1px solid #2d3748; }
+        h1 { margin-bottom: 10px; font-weight: 800; line-height: 1.2; }
+        .main-title { font-size: 40px; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .sub-title { font-size: 22px; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
+        .rocket-icon { font-size: 35px; -webkit-text-fill-color: initial; }
+        .tagline { color: #64748b; font-size: 14px; margin: 15px 0 30px; font-style: italic; }
+        input { width: 90%; padding: 16px; border-radius: 15px; border: 1px solid #2d3748; background: #0b0f1a; color: white; outline: none; margin-bottom: 20px; }
+        button { background: linear-gradient(90deg, #38bdf8, #6366f1); border: none; padding: 16px; border-radius: 15px; cursor: pointer; font-weight: bold; width: 96%; color: white; font-size: 17px; }
+        #preview-box { display: none; margin-top: 30px; }
+        #thumb-img { width: 100%; border-radius: 20px; border: 2px solid #38bdf8; }
+        .progress-container { background: #1f2937; height: 14px; border-radius: 20px; margin: 25px 0; overflow: hidden; display: none; }
+        #bar { background: #38bdf8; width: 0%; height: 100%; transition: width 0.4s ease; }
+        .stats { display: flex; justify-content: space-between; font-size: 13px; margin-top: 15px; display: none; background: #0b0f1a; padding: 15px; border-radius: 15px; }
+        .stat-value { color: #38bdf8; font-weight: bold; display: block; font-size: 15px; }
+        #save-link { display: none; margin-top: 20px; background: #22c55e; color: white; padding: 15px; border-radius: 15px; text-decoration: none; font-weight: bold; display: inline-block; width: 90%; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #2d3748; font-size: 11px; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>
+            <div class="main-title"><span class="rocket-icon">🚀</span><span>Sonic Tube</span></div>
+            <div class="sub-title">YouTube Downloader</div>
+        </h1>
+        <div class="tagline">Velocity in Every Click</div>
+        <input type="text" id="url" placeholder="Paste your link here...">
+        <button onclick="download()" id="dl-btn">Start Extraction</button>
+        <div id="preview-box"><img id="thumb-img" src=""><div id="v-title" style="margin: 15px 0; font-size: 15px;"></div></div>
+        <div class="progress-container" id="p-box"><div id="bar"></div></div>
+        <div class="stats" id="stats-box">
+            <div>Size<span id="file-size" class="stat-value">0 MB</span></div>
+            <div>Speed<span id="dl-speed" class="stat-value" style="color: #f87171;">0 KB/s</span></div>
+            <div>Progress<span id="p-text" class="stat-value">0%</span></div>
+        </div>
+        <p id="msg" style="margin-top: 20px; font-weight: bold; color: #94a3b8;"></p>
+        <a id="save-link" href="#">📥 Save to My Device</a>
+        <div class="footer">Developed by <strong>Hashan Madhumal Hettiarachchi</strong><br>© 2026 All Rights Reserved</div>
+    </div>
+
+    <script>
+        let timer;
+        function download() {
+            const url = document.getElementById('url').value;
+            if(!url) return alert("Please enter a URL!");
+            document.getElementById('dl-btn').disabled = true;
+            document.getElementById('msg').innerText = "Connecting to Sonic Servers...";
+            document.getElementById('save-link').style.display = 'none';
+            fetch('/download', { method: 'POST', body: new URLSearchParams({'url': url}) });
+            timer = setInterval(updateProgress, 800);
+        }
+        function updateProgress() {
+            fetch('/progress').then(res => res.json()).then(data => {
+                if (data.status !== 'idle') {
+                    if (data.title && data.title !== "Fetching...") {
+                        document.getElementById('preview-box').style.display = 'block';
+                        document.getElementById('v-title').innerText = data.title;
+                        document.getElementById('thumb-img').src = data.thumb;
+                        document.getElementById('p-box').style.display = 'block';
+                        document.getElementById('stats-box').style.display = 'flex';
+                    }
+                    let pVal = data.percent.replace('%', '');
+                    document.getElementById('bar').style.width = pVal + '%';
+                    document.getElementById('p-text').innerText = data.percent;
+                    document.getElementById('file-size').innerText = data.size;
+                    document.getElementById('dl-speed').innerText = data.speed;
+                    if (data.status === 'finished') {
+                        clearInterval(timer);
+                        document.getElementById('msg').innerHTML = "<span style='color: #22c55e;'>✅ Server Download Finished!</span>";
+                        document.getElementById('save-link').href = `/get-video/${encodeURIComponent(data.filename)}`;
+                        document.getElementById('save-link').style.display = 'inline-block';
+                        document.getElementById('dl-btn').disabled = false;
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
